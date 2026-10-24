@@ -1,13 +1,18 @@
 package com.fincore.service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
 import com.fincore.entity.Account;
+import com.fincore.entity.Transaction;
+import com.fincore.entity.TransactionStatus;
+import com.fincore.entity.TransactionType;
 import com.fincore.entity.User;
 import com.fincore.repository.AccountRepository;
+import com.fincore.repository.TransactionRepository;
 import com.fincore.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
@@ -19,11 +24,14 @@ public class AccountServiceImpl implements AccountService{
 
     private final UserRepository userRepository;
 
+    private final TransactionRepository transactionRepository;
+
     
-    public AccountServiceImpl(AccountRepository accountRepository,UserRepository userRepository)
+    public AccountServiceImpl(AccountRepository accountRepository,UserRepository userRepository,TransactionRepository transactionRepository)
     {
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
+        this.transactionRepository=transactionRepository;
     }
 
     @Override
@@ -66,7 +74,92 @@ public class AccountServiceImpl implements AccountService{
        
     }
 
+    @Override
+    public List<Account> getAllAccounts() {
+
+        return accountRepository.findAll();
+        
+    }
+
+    @Override
+    @Transactional
+    public void deposit(Long accountId, BigDecimal amount){
+
+        if(amount==null || amount.compareTo(BigDecimal.ZERO)<0)
+        {
+            throw new IllegalArgumentException("Deposit amount must be greater than zero");
+        }
+
+        Account account = accountRepository.findById(accountId).
+                        orElseThrow(()->new IllegalArgumentException("Account not found"));
+
+        
+        if(!"Active".equals(account.getStatus()))
+        {
+            throw new IllegalArgumentException("Account is not active");
+        }
+
+        account.setBalance(account.getBalance().add(amount));
+        accountRepository.save(account);
+        
+        Transaction transaction = new Transaction();
+
+        transaction.setSourceAccount(account);
+        transaction.setAmount(amount);
+        transaction.setType(TransactionType.DEPOSIT);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+
+        transactionRepository.save(transaction);
+
+    }
+
+    @Override
+    @Transactional 
+    public void withdraw(Long accountId, BigDecimal amount) {
+
+        if(amount==null || amount.compareTo(BigDecimal.ZERO)<0)
+        {
+            throw new IllegalArgumentException("Withdrwal amount must be greater than zero");
+        }
+
+        Account account = accountRepository.findById(accountId).
+                        orElseThrow(()->new IllegalArgumentException("Account not found"));
+
+        
+        if(!"Active".equals(account.getStatus()))
+        {
+            throw new IllegalArgumentException("Account is not active");
+        }
+
+        if(account.getBalance().compareTo(amount)<0)
+        {
+            throw new IllegalArgumentException("Insufficient Balance");
+        }
+
+        account.setBalance(account.getBalance().subtract(amount));
+        accountRepository.save(account);
+        
+        Transaction transaction = new Transaction();
+
+        transaction.setSourceAccount(account);
+        transaction.setAmount(amount);
+        transaction.setType(TransactionType.WITHDRAWAL);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+
+        transactionRepository.save(transaction);
+
+    }
+
+
+
+        
+}
 
     
+
     
-}
+
+  
+
+    
+
