@@ -1,6 +1,7 @@
 package com.fincore.service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -150,9 +151,87 @@ public class AccountServiceImpl implements AccountService{
 
     }
 
+    @Override
+    @Transactional 
+    public void transfer(String sourceAccountNumber, String targetAccountNumber, BigDecimal amount) {
 
+        if(amount==null || amount.compareTo(BigDecimal.ZERO)<0)
+        {
+            throw new IllegalArgumentException("Transfer amount must be greater than zero");
+        }
+
+        if(sourceAccountNumber.equals(targetAccountNumber))
+        {
+            throw new IllegalArgumentException("Source and target accounts must be different");
+        }
+
+        Account source = accountRepository.findByAccountNumber(sourceAccountNumber).
+                        orElseThrow(()-> new IllegalArgumentException("Source Account cannot found"));
 
         
+        Account target = accountRepository.findByAccountNumber(targetAccountNumber).
+                        orElseThrow(()-> new IllegalArgumentException("Target Account cannot found"));
+
+        if(!"ACTIVE".equalsIgnoreCase(source.getStatus()) || !"ACTIVE".equalsIgnoreCase(target.getStatus()))
+        {
+            throw new IllegalArgumentException("Both accounts must be active");
+        }
+
+        if (source.getBalance().compareTo(amount) < 0) 
+        {
+            throw new IllegalArgumentException("Insufficient balance");
+        }
+
+        source.setBalance(source.getBalance().subtract(amount));
+        target.setBalance(target.getBalance().add(amount));
+
+        accountRepository.save(source);
+        accountRepository.save(target);
+
+        Transaction transaction = new Transaction();
+
+        transaction.setSourceAccount(source);
+        transaction.setTargetAccount(target);
+        transaction.setAmount(amount);
+        transaction.setType(TransactionType.TRANSFER);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+
+        transactionRepository.save(transaction);
+        
+
+    }
+
+    @Override
+    public List<Transaction> getTransactionHistory(Long accountId) {
+
+        
+            accountRepository.findById(accountId)
+                        .orElseThrow(()->new IllegalArgumentException("Account not Found"));
+
+            List<Transaction>sent = transactionRepository.findBySourceAccount_Id(accountId);
+
+            List<Transaction>received = transactionRepository.findByTargetAccount_Id(accountId);
+
+            List<Transaction>history = new ArrayList<>();
+
+            history.addAll(sent);
+
+            for(Transaction transaction : received)
+            {
+                if(!history.contains(transaction))
+                {
+                    history.add(transaction);
+                }
+            }
+
+            history.sort((a,b)->{
+                return b.getCreatedAt().compareTo(a.getCreatedAt());
+            });
+
+            return history;
+
+    }
+
 }
 
     

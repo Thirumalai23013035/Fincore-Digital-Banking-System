@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import com.fincore.entity.Account;
+import com.fincore.entity.Transaction;
 
 public interface AccountService {
 
@@ -16,6 +17,10 @@ public interface AccountService {
     void deposit(Long accountId,BigDecimal amount);
 
     void withdraw(Long accountId,BigDecimal amount);
+
+    void transfer(String sourceAccountNumber,String targetAccountNumber,BigDecimal amount);
+
+    List<Transaction>getTransactionHistory(Long accountId);
     
 
     

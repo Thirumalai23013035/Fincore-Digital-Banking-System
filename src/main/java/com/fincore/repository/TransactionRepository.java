@@ -8,9 +8,9 @@ import com.fincore.entity.Transaction;
 
 public interface TransactionRepository extends JpaRepository<Transaction,Long>{
 
-    List<Transaction>findBySourceAccountId(Long accountId);
+    List<Transaction>findBySourceAccount_Id(Long accountId);
 
-    List<Transaction>findByTargetAccount(Long accountId);
+    List<Transaction>findByTargetAccount_Id(Long accountId);
 
     
     
